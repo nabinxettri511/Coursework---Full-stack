@@ -1,79 +1,341 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Ajax + Bootstrap Dropdown (Improved)</title>
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-  </head>
+<head>
 
-  <body>
-    <div class="container mt-4">
-      <h1>Ajax and Bootstrap Demo</h1>
+    <meta charset="UTF-8">
 
-      <div class="dropdown" id="myDropdown">
-        <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-          Load Books
-        </button>
-        <ul class="dropdown-menu" id="myList" style="min-width:250px;"></ul>
-      </div>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1">
+
+    <title>AJAX Car Dropdown | My Cars System</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+          rel="stylesheet">
+
+    <style>
+
+        body {
+            background: #f5f7fa;
+        }
+
+        .search-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        }
+
+        #carDropdown {
+            width: 100%;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .dropdown-item {
+            white-space: normal;
+            padding: 12px;
+        }
+
+        .dropdown-item:hover {
+            background: #edf7f0;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<nav class="navbar navbar-dark bg-dark">
+
+    <div class="container">
+
+        <a class="navbar-brand fw-bold"
+           href="list-cars.php">
+
+            My Cars System
+
+        </a>
+
+        <a href="list-cars.php"
+           class="btn btn-outline-light btn-sm">
+
+            Back to Cars
+
+        </a>
+
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+</nav>
 
-    <script>
-      const dropdown = document.getElementById("myDropdown");
+<div class="container py-5">
 
-      dropdown.addEventListener("show.bs.dropdown", () => {
+    <div class="row justify-content-center">
 
-        const list = document.getElementById("myList");
+        <div class="col-md-8">
 
-        // Show spinner while loading
-        list.innerHTML = `
-          <li class="px-3 py-2 text-center">
-            <div class="spinner-border" role="status"></div>
-          </li>
-        `;
+            <div class="search-card">
 
-        // Fetch data
-        fetch("https://mi-linux.wlv.ac.uk/~2440804/ajax/ajax.php")
-          .then(response => response.json())
-          .then(data => {
+                <h2>AJAX Car Search</h2>
 
-            list.innerHTML = ""; // Clear list
+                <p class="text-muted">
 
-            // If no books found
-            if (data.length === 0) {
-              list.innerHTML = `
-                <li class="dropdown-item text-muted">
-                  No books available.
-                </li>`;
-              return;
+                    Type a car name to display matching
+                    cars without refreshing the page.
+
+                </p>
+
+                <div class="dropdown">
+
+                    <label for="carSearch"
+                           class="form-label">
+
+                        Search Car
+
+                    </label>
+
+                    <input type="text"
+                           id="carSearch"
+                           class="form-control"
+                           placeholder="Enter car name..."
+                           maxlength="150"
+                           autocomplete="off"
+                           aria-controls="carDropdown"
+                           aria-expanded="false">
+
+                    <div id="carDropdown"
+                         class="dropdown-menu">
+
+                    </div>
+
+                </div>
+
+                <div id="searchStatus"
+                     class="text-muted mt-3"
+                     aria-live="polite">
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+const searchInput =
+    document.getElementById("carSearch");
+
+const dropdown =
+    document.getElementById("carDropdown");
+
+const statusMessage =
+    document.getElementById("searchStatus");
+
+let latestRequest = 0;
+
+let searchTimer;
+
+// Hide dropdown
+function hideDropdown() {
+
+    dropdown.classList.remove("show");
+
+    searchInput.setAttribute(
+        "aria-expanded",
+        "false"
+    );
+
+}
+
+// Show dropdown
+function showDropdown() {
+
+    dropdown.classList.add("show");
+
+    searchInput.setAttribute(
+        "aria-expanded",
+        "true"
+    );
+
+}
+
+// Search cars using AJAX
+searchInput.addEventListener("input", function () {
+
+    clearTimeout(searchTimer);
+
+    const requestId = ++latestRequest;
+
+    const name = this.value.trim();
+
+    dropdown.replaceChildren();
+
+    hideDropdown();
+
+    if (name === "") {
+
+        statusMessage.textContent = "";
+
+        return;
+
+    }
+
+    statusMessage.textContent = "Searching...";
+
+    searchTimer = setTimeout(function () {
+
+        fetch(
+            "ajax.php?name=" +
+            encodeURIComponent(name)
+        )
+
+        .then(response => {
+
+            if (!response.ok) {
+
+                throw new Error("Request failed");
+
             }
 
-            // Add each book to dropdown
-            data.forEach(book => {
-              const li = document.createElement("li");
-              const a = document.createElement("a");
+            return response.json();
 
-              a.textContent = book.book_name;  // safer than innerHTML
-              a.href = "#";
-              a.classList.add("dropdown-item");
+        })
 
-              li.appendChild(a);
-              list.appendChild(li);
+        .then(cars => {
+
+            if (requestId !== latestRequest) {
+
+                return;
+
+            }
+
+            dropdown.replaceChildren();
+
+            if (cars.length === 0) {
+
+                statusMessage.textContent =
+                    "No matching cars found.";
+
+                hideDropdown();
+
+                return;
+
+            }
+
+            cars.forEach(car => {
+
+                const id = Number(car.car_id);
+
+                if (!Number.isSafeInteger(id) || id < 1) {
+
+                    return;
+
+                }
+
+                const item =
+                    document.createElement("a");
+
+                item.className = "dropdown-item";
+
+                item.href =
+                    "car-details.php?id=" + id;
+
+                const carName =
+                    document.createElement("strong");
+
+                carName.textContent = car.car_name;
+
+                const details =
+                    document.createElement("small");
+
+                details.className =
+                    "d-block text-muted";
+
+                details.textContent =
+                    "Rating: " + car.rating +
+                    "/10 | Established: " +
+                    car.established_date;
+
+                item.appendChild(carName);
+
+                item.appendChild(details);
+
+                dropdown.appendChild(item);
+
             });
-          })
-          .catch(error => {
-            // Display error inside dropdown
-            list.innerHTML = `
-              <li class="dropdown-item text-danger">
-                Error loading data.
-              </li>`;
-          });
-      });
-    </script>
 
-  </body>
+            statusMessage.textContent =
+                cars.length + " matching car(s) found.";
+
+            showDropdown();
+
+        })
+
+        .catch(() => {
+
+            if (requestId !== latestRequest) {
+
+                return;
+
+            }
+
+            hideDropdown();
+
+            statusMessage.textContent =
+                "Unable to load cars.";
+
+        });
+
+    }, 250);
+
+});
+
+// Close dropdown when clicking outside
+document.addEventListener("click", function (event) {
+
+    if (
+        !searchInput.contains(event.target) &&
+        !dropdown.contains(event.target)
+    ) {
+
+        hideDropdown();
+
+    }
+
+});
+
+// Reopen existing results when focusing
+searchInput.addEventListener("focus", function () {
+
+    if (dropdown.children.length > 0) {
+
+        showDropdown();
+
+    }
+
+});
+
+// Close dropdown using Escape
+searchInput.addEventListener("keydown", function (event) {
+
+    if (event.key === "Escape") {
+
+        hideDropdown();
+
+    }
+
+});
+
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+
 </html>
